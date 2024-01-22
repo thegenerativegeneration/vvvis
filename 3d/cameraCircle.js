@@ -1,3 +1,4 @@
+import * as dat from 'dat.gui';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
@@ -12,7 +13,9 @@ let rectHeight = 100;
 let aspectRatio = 16 / 9;
 let cameraHeight = 120; // Height from the floor
 let userFov = -1;
-//const verticalCameraAngle = Math.PI / 2; // 45 degrees, for example
+
+const BASE_VALID_COLOR = 0x00FF00;
+const BASE_INVALID_COLOR = 0xFF0000;
 
 // Scene, camera, and renderer setup
 const scene = new THREE.Scene();
@@ -21,67 +24,43 @@ const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 //document.body.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
+
+// Create a GUI instance
+const gui = new dat.GUI();
+
+// Configuration object for GUI
+const config = {
+    ellipseRadiusX: 300,
+    ellipseRadiusY: 300,
+    numOfCameras: 12,
+    focalLength: 7,
+    sensorSize: 16,
+    rectWidth: 100,
+    rectHeight: 100,
+    aspectRatio: 16 / 9,
+    cameraHeight: 120,
+    userFov: -1,
+    updateVisualization: createCamerasAndFrustums // Function to call when any parameter changes
+};
+
+// Add GUI controllers
+gui.add(config, 'ellipseRadiusX', 100, 1000).onChange(config.updateVisualization);
+gui.add(config, 'ellipseRadiusY', 100, 1000).onChange(config.updateVisualization);
+gui.add(config, 'numOfCameras', 1, 20).step(1).onChange(config.updateVisualization);
+gui.add(config, 'focalLength', 5, 200).onChange(config.updateVisualization);
+gui.add(config, 'sensorSize', 1, 35).onChange(config.updateVisualization);
+gui.add(config, 'rectWidth', 50, 1000).onChange(config.updateVisualization);
+gui.add(config, 'rectHeight', 50, 1000).onChange(config.updateVisualization);
+gui.add(config, 'aspectRatio', 0.4, 4).onChange(config.updateVisualization);
+gui.add(config, 'cameraHeight', 50, 300).onChange(config.updateVisualization);
+gui.add(config, 'userFov', -1, 180).onChange(config.updateVisualization);
+
+
 document.getElementById('threejs-container').appendChild(renderer.domElement);
 
 // Function to calculate field of view in degrees
 function calculateFOV(focalLength, sensorSize) {
     return 2 * Math.atan(sensorSize / (2 * focalLength)) * (180 / Math.PI);
-}
-function createFrustumGeometry(fov, aspect, near, far) {
-    const geometry = new THREE.BufferGeometry();
-
-    // Calculate the half angles for the FOV
-    const halfVerticalFOV = THREE.MathUtils.degToRad(fov) / 2;
-    const halfHorizontalFOV = Math.atan(Math.tan(halfVerticalFOV) * aspect);
-
-    // Calculate near and far plane widths and heights
-    const nearHeight = 2 * Math.tan(halfVerticalFOV) * near;
-    const nearWidth = 2 * Math.tan(halfHorizontalFOV) * near;
-    const farHeight = 2 * Math.tan(halfVerticalFOV) * far;
-    const farWidth = 2 * Math.tan(halfHorizontalFOV) * far;
-
-    // Vertices
-    const vertices = new Float32Array([
-        // Near plane
-        -nearWidth / 2, -nearHeight / 2, -near, // bottom left
-         nearWidth / 2, -nearHeight / 2, -near, // bottom right
-         nearWidth / 2,  nearHeight / 2, -near, // top right
-        -nearWidth / 2,  nearHeight / 2, -near, // top left
-
-        // Far plane
-        -farWidth / 2, -farHeight / 2, -far, // bottom left
-         farWidth / 2, -farHeight / 2, -far, // bottom right
-         farWidth / 2,  farHeight / 2, -far, // top right
-        -farWidth / 2,  farHeight / 2, -far, // top left
-    ]);
-
-    // Indexes for the faces
-    const indices = [
-        // Near plane
-        0, 2, 1,  0, 3, 2,
-        // Far plane
-        4, 5, 6,  4, 6, 7,
-        // Sides
-        0, 1, 5,  0, 5, 4,
-        1, 2, 6,  1, 6, 5,
-        2, 3, 7,  2, 7, 6,
-        3, 0, 4,  3, 4, 7
-    ];
-
-    // Apply vertices and indices to the geometry
-    geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-    geometry.setIndex(indices);
-
-    // Compute normals for the faces
-    geometry.computeVertexNormals();
-
-    return geometry;
-}
-
-function createFrustum(fov, aspect, near, far) {
-    const geometry = createFrustumGeometry(fov, aspect, -near, -far);
-    const material = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
-    return new THREE.Mesh(geometry, material);
 }
 
 function clearScene() {
@@ -136,87 +115,136 @@ function createEllipse(ellipseRadiusX, ellipseRadiusY, color = 0x0000FF, filled 
     return ellipse;
 }
 
+function isBoxInCameraView(box, camera) {
+    camera.updateMatrixWorld(); // Ensure the camera's latest position and orientation is used
+    const frustum = new THREE.Frustum();
+    frustum.setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
 
+    const vertices = [
+        new THREE.Vector3(box.min.x, box.min.y, box.min.z),
+        new THREE.Vector3(box.min.x, box.min.y, box.max.z),
+        new THREE.Vector3(box.min.x, box.max.y, box.min.z),
+        new THREE.Vector3(box.min.x, box.max.y, box.max.z),
+        new THREE.Vector3(box.max.x, box.min.y, box.min.z),
+        new THREE.Vector3(box.max.x, box.min.y, box.max.z),
+        new THREE.Vector3(box.max.x, box.max.y, box.min.z),
+        new THREE.Vector3(box.max.x, box.max.y, box.max.z)
+    ];
+
+    for (let i = 0; i < vertices.length; i++) {
+        if (!frustum.containsPoint(vertices[i])) {
+            return false; // If any vertex is outside the frustum, the box is not fully visible
+        }
+    }
+
+    return true; // All vertices are inside the frustum, the box is fully visible
+}
+
+function shiftColor(baseColor, index, total) {
+    // Convert hex color to HSL
+    const hsl = new THREE.Color(baseColor).getHSL({});
+
+    // Adjust hue based on index
+    hsl.h += (index / total) * 0.1; // Adjust 0.1 as needed
+    hsl.h %= 1; // Ensure hue stays within the [0, 1] range
+
+    // Convert back to hex and return
+    return new THREE.Color().setHSL(hsl.h, hsl.s, hsl.l);
+}
 
 function createCamerasAndFrustums() {
+    ellipseRadiusX = config.ellipseRadiusX;
+    ellipseRadiusY = config.ellipseRadiusY;
+    numOfCameras = config.numOfCameras;
+    focalLength = config.focalLength;
+    sensorSize = config.sensorSize;
+    rectWidth = config.rectWidth;
+    rectHeight = config.rectHeight;
+    aspectRatio = config.aspectRatio;
+    cameraHeight = config.cameraHeight;
+    userFov = config.userFov;
     // Clear existing cameras and frustums
-    //scene.children = scene.children.filter(child => !(child instanceof THREE.Mesh && child.geometry instanceof THREE.ConeGeometry));
-
     clearScene();
-    // Your logic for creating cameras and frustums
+
     // Create box (target)
     const boxHeight = 240; // Specify the height of the box
-    const geometry = new THREE.BoxGeometry(rectWidth, boxHeight, rectHeight);
-    const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-    const box = new THREE.Mesh(geometry, material);
-    box.position.set(0, boxHeight / 2, 0); // Position so the base is on the plane
-    scene.add(box);
+    const boxGeometry = new THREE.BoxGeometry(rectWidth, boxHeight, rectHeight);
+    const boxMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+    const boxObject = new THREE.Mesh(boxGeometry, boxMaterial);
+    boxObject.position.set(0, boxHeight / 2, 0); // Position so the base is on the plane
+    scene.add(boxObject);
+
+    // Create a bounding box for the box
+    const box = new THREE.Box3().setFromObject(boxObject);
 
     createEllipse(ellipseRadiusX, ellipseRadiusY, 0x0000FF, true);
     const ellipse = createEllipse(ellipseRadiusX, ellipseRadiusY, 0xFFD433, false);
     ellipse.position.set(0, cameraHeight, 0);
 
     // Create cameras and frustums
-    let fov = 0;
-    if (userFov > 1) {
-        fov = userFov;
-    }
-    else {
-        fov = calculateFOV(focalLength, sensorSize);
-    }
+    let fov = userFov > 1 ? userFov : calculateFOV(focalLength, sensorSize);
     const near = 1; // Near clipping plane
     const far = 2000; // Far clipping plane
+
     for (let i = 0; i < numOfCameras; i++) {
         const theta = (i / numOfCameras) * 2 * Math.PI;
         const x = ellipseRadiusX * Math.cos(theta);
         const z = ellipseRadiusY * Math.sin(theta);
 
-        // Create frustum
-        const frustum = createFrustum(fov, aspectRatio, near, far);
-        frustum.position.set(x, cameraHeight, z);
-        //frustum.lookAt(rectangle.position);
-        frustum.lookAt(new THREE.Vector3(0, cameraHeight, 0));
-        scene.add(frustum);
+        // Create a new PerspectiveCamera
+        const simCamera = new THREE.PerspectiveCamera(fov, aspectRatio, near, far);
+
+        simCamera.position.set(x, cameraHeight, z);
+        simCamera.up.set(0, 1, 0);
+        simCamera.lookAt(0, cameraHeight, 0);
+        
+        // log orientation
+        simCamera.updateMatrixWorld();
+
+
+        const isVisible = isBoxInCameraView(box, simCamera);
+        let frustrumColor = isVisible ? BASE_VALID_COLOR : BASE_INVALID_COLOR;
+        frustrumColor = shiftColor(frustrumColor, i*1, numOfCameras);
+
+
+        // camera sphere marker
+        const sphereGeometry = new THREE.SphereGeometry(5, 32, 32);
+        const sphereMaterial = new THREE.MeshBasicMaterial({ color: frustrumColor });
+        const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+        sphere.position.set(x, cameraHeight, z);
+        scene.add(sphere);
+
+
+
+        // Create a CameraHelper for the PerspectiveCamera
+        const helper = new THREE.CameraHelper(simCamera);
+        
+        helper.traverse((child) => {
+            if (child instanceof THREE.LineSegments) {
+                child.material.color.set(frustrumColor);
+            }
+        });
+        
+        scene.add(helper);
     }
 
     // Lighting
     const ambientLight = new THREE.AmbientLight(0x404040);
     scene.add(ambientLight);
 
-    // Camera setup for the scene
-    camera.position.set(0, 300, 1000);
+
+    // Adjust the main camera's position
+    camera.position.set(0, 1000, 1000);
     camera.lookAt(new THREE.Vector3(0, cameraHeight, 0));
-
-
-}
-function updateVisualization() {
-    // Read new values from the input elements
-    ellipseRadiusX = parseInt(document.getElementById('ellipseRadiusXInput').value);
-    ellipseRadiusY = parseInt(document.getElementById('ellipseRadiusYInput').value);
-    numOfCameras = parseInt(document.getElementById('cameraCountInput').value);
-    focalLength = parseInt(document.getElementById('focalLengthInput').value);
-    sensorSize = parseInt(document.getElementById('sensorSizeInput').value);
-    rectWidth = parseInt(document.getElementById('rectWidthInput').value);
-    rectHeight = parseInt(document.getElementById('rectHeightInput').value);
-    aspectRatio = parseInt(document.getElementById('aspectRatioInput').value);
-    cameraHeight = parseInt(document.getElementById('cameraHeightInput').value);
-    userFov = parseInt(document.getElementById('fovInput').value);
-
-    // Clear existing cameras and frustums
-    scene.children = scene.children.filter(child => !(child instanceof THREE.Mesh && child.geometry instanceof THREE.ConeGeometry));
-
-    // Re-create cameras and frustums with new parameters
-    createCamerasAndFrustums();
 }
 
 
-document.getElementById('updateButton').addEventListener('click', updateVisualization);
 
 // Animation loop
 function animate() {
     requestAnimationFrame(animate);
     renderer.render(scene, camera);
 }
-updateVisualization();
+createCamerasAndFrustums();
 animate();
 
