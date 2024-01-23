@@ -44,19 +44,25 @@ const config = {
     cameraFov: -1,
     updateVisualization: createCamerasAndFrustums // Function to call when any parameter changes
 };
+// Creating folders
+const cameraSettingsFolder = gui.addFolder('Camera Settings');
+const cameraPositionFolder = gui.addFolder('Camera Position');
+const captureSpaceSettingsFolder = gui.addFolder('Capture Space Settings');
 
-// Add GUI controllers
-gui.add(config, 'ellipseRadiusX', 100, 1000).onChange(config.updateVisualization);
-gui.add(config, 'ellipseRadiusY', 100, 1000).onChange(config.updateVisualization);
-gui.add(config, 'numOfCameras', 1, 20).step(1).onChange(config.updateVisualization);
-gui.add(config, 'focalLength', 5, 200).onChange(config.updateVisualization);
-gui.add(config, 'sensorSize', 1, 35).onChange(config.updateVisualization);
-gui.add(config, 'spaceWidthX', 50, 1000).onChange(config.updateVisualization);
-gui.add(config, 'spaceWidthY', 50, 1000).onChange(config.updateVisualization);
-gui.add(config, 'spaceHeight', 50, 1000).onChange(config.updateVisualization);
-gui.add(config, 'aspectRatio', 0.4, 4).onChange(config.updateVisualization);
-gui.add(config, 'cameraHeight', 50, 300).onChange(config.updateVisualization);
-gui.add(config, 'cameraFov', -1, 180).onChange(config.updateVisualization);
+// Adding camera controls to the Camera Settings folder
+cameraPositionFolder.add(config, 'ellipseRadiusX', 100, 1000).onChange(config.updateVisualization);
+cameraPositionFolder.add(config, 'ellipseRadiusY', 100, 1000).onChange(config.updateVisualization);
+cameraPositionFolder.add(config, 'numOfCameras', 1, 20).step(1).onChange(config.updateVisualization);
+cameraSettingsFolder.add(config, 'focalLength', 5, 200).onChange(config.updateVisualization);
+cameraSettingsFolder.add(config, 'sensorSize', 1, 35).onChange(config.updateVisualization);
+cameraPositionFolder.add(config, 'cameraHeight', 50, 300).onChange(config.updateVisualization);
+cameraSettingsFolder.add(config, 'cameraFov', -1, 180).onChange(config.updateVisualization);
+cameraSettingsFolder.add(config, 'aspectRatio', 0.2, 4).onChange(config.updateVisualization);
+
+// Adding capture space controls to the Capture Space Settings folder
+captureSpaceSettingsFolder.add(config, 'spaceWidthX', 50, 1000).onChange(config.updateVisualization);
+captureSpaceSettingsFolder.add(config, 'spaceWidthY', 50, 1000).onChange(config.updateVisualization);
+captureSpaceSettingsFolder.add(config, 'spaceHeight', 50, 1000).onChange(config.updateVisualization);
 
 
 document.getElementById('threejs-container').appendChild(renderer.domElement);
@@ -233,12 +239,14 @@ function createCamerasAndFrustums() {
 
     // Lighting
     const ambientLight = new THREE.AmbientLight(0x404040);
+    ambientLight.power = 100;
     scene.add(ambientLight);
 
 
     // Adjust the main camera's position
     camera.position.set(0, 1000, 1000);
     camera.lookAt(new THREE.Vector3(0, cameraHeight, 0));
+    
 }
 
 
