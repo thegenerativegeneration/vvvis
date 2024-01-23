@@ -8,8 +8,9 @@ let ellipseRadiusY = 300;
 let numOfCameras = 12;
 let focalLength = 7; // in mm
 let sensorSize = 16; // Assuming a 35mm (full-frame) sensor width
-let rectWidth = 100;
-let rectHeight = 100;
+let spaceWidthX = 100;
+let spaceWidthY = 100;
+let spaceHeight = 240;
 let aspectRatio = 16 / 9;
 let cameraHeight = 120; // Height from the floor
 let userFov = -1;
@@ -35,8 +36,9 @@ const config = {
     numOfCameras: 12,
     focalLength: 7,
     sensorSize: 16,
-    rectWidth: 100,
-    rectHeight: 100,
+    spaceWidthX: 100,
+    spaceWidthY: 100,
+    spaceHeight: 240,
     aspectRatio: 16 / 9,
     cameraHeight: 120,
     userFov: -1,
@@ -49,8 +51,9 @@ gui.add(config, 'ellipseRadiusY', 100, 1000).onChange(config.updateVisualization
 gui.add(config, 'numOfCameras', 1, 20).step(1).onChange(config.updateVisualization);
 gui.add(config, 'focalLength', 5, 200).onChange(config.updateVisualization);
 gui.add(config, 'sensorSize', 1, 35).onChange(config.updateVisualization);
-gui.add(config, 'rectWidth', 50, 1000).onChange(config.updateVisualization);
-gui.add(config, 'rectHeight', 50, 1000).onChange(config.updateVisualization);
+gui.add(config, 'spaceWidthX', 50, 1000).onChange(config.updateVisualization);
+gui.add(config, 'spaceWidthY', 50, 1000).onChange(config.updateVisualization);
+gui.add(config, 'spaceHeight', 50, 1000).onChange(config.updateVisualization);
 gui.add(config, 'aspectRatio', 0.4, 4).onChange(config.updateVisualization);
 gui.add(config, 'cameraHeight', 50, 300).onChange(config.updateVisualization);
 gui.add(config, 'userFov', -1, 180).onChange(config.updateVisualization);
@@ -158,8 +161,9 @@ function createCamerasAndFrustums() {
     numOfCameras = config.numOfCameras;
     focalLength = config.focalLength;
     sensorSize = config.sensorSize;
-    rectWidth = config.rectWidth;
-    rectHeight = config.rectHeight;
+    spaceWidthX = config.spaceWidthX;
+    spaceWidthY = config.spaceWidthY;
+    spaceHeight = config.spaceHeight;
     aspectRatio = config.aspectRatio;
     cameraHeight = config.cameraHeight;
     userFov = config.userFov;
@@ -167,11 +171,10 @@ function createCamerasAndFrustums() {
     clearScene();
 
     // Create box (target)
-    const boxHeight = 240; // Specify the height of the box
-    const boxGeometry = new THREE.BoxGeometry(rectWidth, boxHeight, rectHeight);
+    const boxGeometry = new THREE.BoxGeometry(spaceWidthX, spaceHeight, spaceWidthY);
     const boxMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
     const boxObject = new THREE.Mesh(boxGeometry, boxMaterial);
-    boxObject.position.set(0, boxHeight / 2, 0); // Position so the base is on the plane
+    boxObject.position.set(0, spaceHeight / 2, 0); // Position so the base is on the plane
     scene.add(boxObject);
 
     // Create a bounding box for the box
