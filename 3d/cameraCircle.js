@@ -13,7 +13,7 @@ let spaceWidthY = 100;
 let spaceHeight = 240;
 let aspectRatio = 16 / 9;
 let cameraHeight = 120; // Height from the floor
-let userFov = -1;
+let cameraFov = -1;
 
 const BASE_VALID_COLOR = 0x00FF00;
 const BASE_INVALID_COLOR = 0xFF0000;
@@ -41,7 +41,7 @@ const config = {
     spaceHeight: 240,
     aspectRatio: 16 / 9,
     cameraHeight: 120,
-    userFov: -1,
+    cameraFov: -1,
     updateVisualization: createCamerasAndFrustums // Function to call when any parameter changes
 };
 
@@ -56,7 +56,7 @@ gui.add(config, 'spaceWidthY', 50, 1000).onChange(config.updateVisualization);
 gui.add(config, 'spaceHeight', 50, 1000).onChange(config.updateVisualization);
 gui.add(config, 'aspectRatio', 0.4, 4).onChange(config.updateVisualization);
 gui.add(config, 'cameraHeight', 50, 300).onChange(config.updateVisualization);
-gui.add(config, 'userFov', -1, 180).onChange(config.updateVisualization);
+gui.add(config, 'cameraFov', -1, 180).onChange(config.updateVisualization);
 
 
 document.getElementById('threejs-container').appendChild(renderer.domElement);
@@ -166,7 +166,7 @@ function createCamerasAndFrustums() {
     spaceHeight = config.spaceHeight;
     aspectRatio = config.aspectRatio;
     cameraHeight = config.cameraHeight;
-    userFov = config.userFov;
+    cameraFov = config.cameraFov;
     // Clear existing cameras and frustums
     clearScene();
 
@@ -185,7 +185,7 @@ function createCamerasAndFrustums() {
     ellipse.position.set(0, cameraHeight, 0);
 
     // Create cameras and frustums
-    let fov = userFov > 1 ? userFov : calculateFOV(focalLength, sensorSize);
+    let fov = cameraFov > 1 ? cameraFov : calculateFOV(focalLength, sensorSize);
     const near = 1; // Near clipping plane
     const far = 2000; // Far clipping plane
 
